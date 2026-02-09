@@ -35,13 +35,21 @@ document.addEventListener("DOMContentLoaded", () => {
   loadAndDisplayLinks();
   setupEventListeners();
   updateBadge();
+  extractBtn.disabled = true;
+  extractBtn.title = "Automatic extraction enabled";
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes[STORAGE_KEY]) {
+      loadAndDisplayLinks();
+      updateBadge();
+    }
+  });
 });
 
 /**
  * Setup all event listeners
  */
 function setupEventListeners() {
-  extractBtn.addEventListener("click", handleExtractLinks);
   refreshBtn.addEventListener("click", handleRefreshPage);
   addBtn.addEventListener("click", handleAddLink);
   clearAllBtn.addEventListener("click", handleClearAll);

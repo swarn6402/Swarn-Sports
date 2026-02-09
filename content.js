@@ -1,5 +1,8 @@
 // Content script for extracting links from Telegram pages
 
+const STORAGE_KEY = "telegram_stream_links";
+const seenLinks = new Set();
+
 /**
  * Check if a URL matches streaming patterns
  */
@@ -124,26 +127,27 @@ function getMessageTimestamp(messageElement) {
 /**
  * Extract all URLs from a message element
  */
-function extractUrlsFromElement(element) {
-  const urls = new Set();
+function extractLinksFromText(text) {
+  if (!text) return;
 
   try {
-    // Extract URLs from text content
-    const text = element.innerText || element.textContent || "";
     const urlRegex = /https?:\/\/[^\s]+/g;
     const matches = text.match(urlRegex) || [];
 
     for (const url of matches) {
       const cleanedUrl = cleanUrl(url);
-      if (cleanedUrl && isStreamingLink(cleanedUrl)) {
-        urls.add(cleanedUrl);
+      if (!cleanedUrl || seenLinks.has(cleanedUrl)) {
+        continue;
       }
+      if (!isStreamingLink(cleanedUrl)) {
+        continue;
+      }
+      seenLinks.add(cleanedUrl);
+      saveToStorage(cleanedUrl, text);
     }
   } catch (e) {
     console.error("Error extracting URLs:", e);
   }
-
-  return Array.from(urls);
 }
 
 /**
@@ -165,94 +169,61 @@ function extractMessageContext(messageElement) {
 /**
  * Main extraction function - finds all message bubbles and extracts links
  */
-function extractLinksFromTelegram() {
-  const links = [];
-  const seen = new Set();
-
-  try {
-    // Telegram Web UI uses multiple possible selectors for message containers
-    const messageSelectors = [
-      '[class*="message"]',
-      '[class*="bubble"]',
-      '[class*="MessageGroup"]',
-      '[class*="message-content"]',
-      '[role="article"]',
-      ".message",
-    ];
-
-    let messageElements = [];
-
-    // Try each selector and collect unique elements
-    const seenElements = new Set();
-    for (const selector of messageSelectors) {
-      try {
-        const elements = document.querySelectorAll(selector);
-        for (const el of elements) {
-          if (!seenElements.has(el)) {
-            messageElements.push(el);
-            seenElements.add(el);
-          }
-        }
-      } catch (e) {
-        // Invalid selector, continue
-      }
+function saveToStorage(url, text) {
+  chrome.storage.local.get([STORAGE_KEY], (result) => {
+    const links = result[STORAGE_KEY] || [];
+    if (links.some((link) => link.url === url)) {
+      return;
     }
-
-    // Process each message element
-    for (const messageElement of messageElements) {
-      try {
-        // Skip if element is not visible
-        if (!messageElement.offsetParent) {
-          continue;
-        }
-
-        const urls = extractUrlsFromElement(messageElement);
-        const context = extractMessageContext(messageElement);
-        const timestamp = getMessageTimestamp(messageElement);
-
-        for (const url of urls) {
-          if (seen.has(url)) {
-            continue;
-          }
-          seen.add(url);
-          links.push({
-            url,
-            context,
-            timestamp,
-            source: "auto",
-          });
-        }
-      } catch (e) {
-        console.error("Error processing message:", e);
-      }
-    }
-
-    return links;
-  } catch (e) {
-    console.error("Error in extractLinksFromTelegram:", e);
-    return [];
-  }
+    const description = text ? text.substring(0, 100) : "Extracted from Telegram";
+    links.push({
+      url,
+      sport: "Other",
+      description,
+      timestamp: new Date().toISOString(),
+      source: "auto",
+    });
+    chrome.storage.local.set({ [STORAGE_KEY]: links });
+  });
 }
 
-// Listen for messages from the popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "extractLinks") {
-    try {
-      const links = extractLinksFromTelegram();
-      sendResponse({
-        success: true,
-        links,
-        currentUrl: window.location.href,
-      });
-    } catch (e) {
-      console.error("Error extracting links:", e);
-      sendResponse({
-        success: false,
-        error: e.message,
+function seedSeenLinks() {
+  chrome.storage.local.get([STORAGE_KEY], (result) => {
+    const links = result[STORAGE_KEY] || [];
+    for (const link of links) {
+      if (link.url) {
+        seenLinks.add(link.url);
+      }
+    }
+  });
+}
+
+function startLiveObserver(messageContainer) {
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      mutation.addedNodes.forEach((node) => {
+        if (node && node.innerText) {
+          extractLinksFromText(node.innerText);
+        }
       });
     }
-  }
-});
+  });
 
-// Also make extraction available immediately when popup opens
-console.log("Telegram Stream Extractor content script loaded");
+  observer.observe(messageContainer, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+function waitForMessageContainer() {
+  const messageContainer = document.querySelector('div[class*="messages"]');
+  if (messageContainer) {
+    startLiveObserver(messageContainer);
+    return;
+  }
+
+  setTimeout(waitForMessageContainer, 2000);
+}
+
+seedSeenLinks();
+waitForMessageContainer();
