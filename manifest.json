@@ -5,10 +5,7 @@
   "version": "1.0.0",
   "description": "SwarnSports is a lightweight Chrome extension that organizes streaming links from Telegram Web into a clean interface.",
   "permissions": ["activeTab", "alarms", "storage", "scripting", "tabs"],
-  "host_permissions": [
-    "https://web.telegram.org/*",
-    "https://webz.telegram.org/*"
-  ],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -25,7 +22,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://web.telegram.org/*", "https://webz.telegram.org/*"],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
       "run_at": "document_end"
     }
