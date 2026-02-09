@@ -77,6 +77,8 @@ function seedSeenLinks() {
       if (link.url) {
         seenLinks.add(link.url);
       }
+      seenLinks.add(cleanedUrl);
+      saveToStorage(cleanedUrl, text);
     }
   });
 }
@@ -117,7 +119,6 @@ chrome.runtime.onMessage.addListener((request) => {
   if (request.action === "extractLinks") {
     scanEntirePage();
   }
-});
 
 seedSeenLinks();
 scanEntirePage();
