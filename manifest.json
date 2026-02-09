@@ -3,7 +3,7 @@
   "name": "Telegram Stream Extractor",
   "version": "1.0.0",
   "description": "Extract and manage streaming links from Telegram",
-  "permissions": ["activeTab", "storage", "scripting", "tabs"],
+  "permissions": ["activeTab", "alarms", "storage", "scripting", "tabs"],
   "host_permissions": [
     "https://web.telegram.org/*",
     "https://webz.telegram.org/*"
