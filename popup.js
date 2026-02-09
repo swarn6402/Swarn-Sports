@@ -22,6 +22,12 @@ const matchName = document.getElementById("matchName");
 const linksContainer = document.getElementById("linksContainer");
 const linkCount = document.getElementById("linkCount");
 const statusMsg = document.getElementById("statusMsg");
+const searchInput = document.getElementById("searchInput");
+const toggleAddBtn = document.getElementById("toggleAddBtn");
+const addSection = document.getElementById("addSection");
+
+// State
+let currentFilter = "";
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -38,14 +44,8 @@ function setupEventListeners() {
   refreshBtn.addEventListener("click", handleRefreshPage);
   addBtn.addEventListener("click", handleAddLink);
   clearAllBtn.addEventListener("click", handleClearAll);
-
-  // Allow Enter key to submit manual URL
-  manualUrl.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      handleAddLink();
-    }
-  });
-
+  toggleAddBtn.addEventListener("click", handleToggleAddForm);
+  searchInput.addEventListener("input", handleSearch);
   matchName.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
       handleAddLink();
@@ -244,6 +244,38 @@ async function handleClearAll() {
 }
 
 /**
+ * Handle toggle add form
+ */
+function handleToggleAddForm() {
+  addSection.classList.toggle("collapsed");
+  toggleAddBtn.textContent = addSection.classList.contains("collapsed")
+    ? "➕ Add"
+    : "➖ Hide";
+}
+
+/**
+ * Handle search/filter
+ */
+function handleSearch() {
+  currentFilter = searchInput.value.toLowerCase().trim();
+  loadAndDisplayLinks();
+}
+
+/**
+ * Filter links by search query
+ */
+function filterLinks(links) {
+  if (!currentFilter) return links;
+
+  return links.filter((link) => {
+    const urlMatch = link.url.toLowerCase().includes(currentFilter);
+    const descMatch = link.description.toLowerCase().includes(currentFilter);
+    const sportMatch = link.sport.toLowerCase().includes(currentFilter);
+    return urlMatch || descMatch || sportMatch;
+  });
+}
+
+/**
  * Delete a link
  */
 async function deleteLink(url) {
@@ -338,15 +370,27 @@ async function saveLinks(links) {
  * Display links in the UI
  */
 function displayLinks(links) {
-  linkCount.textContent = links.length;
+  // Apply search filter
+  const filteredLinks = filterLinks(links);
 
-  if (links.length === 0) {
-    linksContainer.innerHTML = `
-      <div class="no-links-message">
-        🎬 No active links yet<br>
-        <small>Extract from Telegram or add manually</small>
-      </div>
-    `;
+  linkCount.textContent = filteredLinks.length;
+
+  if (filteredLinks.length === 0) {
+    if (currentFilter) {
+      linksContainer.innerHTML = `
+        <div class="no-links-message">
+          🔍 No matches found<br>
+          <small>Try a different search term</small>
+        </div>
+      `;
+    } else {
+      linksContainer.innerHTML = `
+        <div class="no-links-message">
+          🎬 No active links yet<br>
+          <small>Extract from Telegram or add manually</small>
+        </div>
+      `;
+    }
     clearAllBtn.style.display = "none";
     return;
   }
@@ -359,7 +403,7 @@ function displayLinks(links) {
     linksBySport[sport] = [];
   }
 
-  links.forEach((link) => {
+  filteredLinks.forEach((link) => {
     const sport = link.sport || "Other";
     if (!linksBySport[sport]) {
       linksBySport[sport] = [];
@@ -369,6 +413,7 @@ function displayLinks(links) {
 
   // Build HTML
   let html = "";
+  const now = new Date();
 
   for (const [sport, sportLinks] of Object.entries(linksBySport)) {
     if (sportLinks.length === 0) continue;
@@ -378,8 +423,13 @@ function displayLinks(links) {
       const timeAgo = getTimeAgoString(link.timestamp);
       const urlDisplay = new URL(link.url).hostname || link.url;
 
+      // Add pulse animation for links added in the last 5 seconds
+      const linkTime = new Date(link.timestamp);
+      const isNewLink = now - linkTime < 5000;
+      const pulseClass = isNewLink ? "new-link" : "";
+
       html += `
-        <div class="link-card ${sportInfo.class}">
+        <div class="link-card ${sportInfo.class} ${pulseClass}">
           <div class="card-header">
             <div class="card-title">
               <span>${sportInfo.emoji}</span>
