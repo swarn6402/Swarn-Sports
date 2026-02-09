@@ -32,8 +32,28 @@
       <!-- Status Message -->
       <div id="statusMsg" class="status-message" style="display: none"></div>
 
-      <!-- Manual Add Section -->
-      <div class="add-section">
+      <!-- Search Section -->
+      <div class="search-section">
+        <div class="search-wrapper">
+          <input
+            type="text"
+            id="searchInput"
+            class="input-field"
+            placeholder="Search links..."
+            autocomplete="off"
+          />
+          <button
+            id="toggleAddBtn"
+            class="toggle-add-btn"
+            title="Toggle manual add form"
+          >
+            ➕ Add
+          </button>
+        </div>
+      </div>
+
+      <!-- Manual Add Section (Collapsible) -->
+      <div id="addSection" class="add-section">
         <h3>📝 Add Manually</h3>
         <div class="form-group">
           <input
