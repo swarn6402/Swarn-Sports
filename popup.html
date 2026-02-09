@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Telegram Stream Extractor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <h1>📺 Stream Links</h1>
+        <div class="header-actions">
+          <button
+            id="extractBtn"
+            class="btn btn-primary"
+            title="Extract links from Telegram"
+          >
+            🔄 Extract Links
+          </button>
+          <button
+            id="refreshBtn"
+            class="btn btn-secondary"
+            title="Refresh the current page"
+          >
+            🔁 Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Status Message -->
+      <div id="statusMsg" class="status-message" style="display: none"></div>
+
+      <!-- Manual Add Section -->
+      <div class="add-section">
+        <h3>📝 Add Manually</h3>
+        <div class="form-group">
+          <input
+            type="text"
+            id="manualUrl"
+            class="input-field"
+            placeholder="Enter stream URL"
+            autocomplete="off"
+          />
+        </div>
+        <div class="form-row">
+          <select id="sportSelect" class="input-field form-select">
+            <option value="Cricket">🏏 Cricket</option>
+            <option value="Football">⚽ Football</option>
+            <option value="Tennis">🎾 Tennis</option>
+            <option value="Other">🎯 Other</option>
+          </select>
+          <input
+            type="text"
+            id="matchName"
+            class="input-field"
+            placeholder="Match/Event name"
+            autocomplete="off"
+          />
+        </div>
+        <button id="addBtn" class="btn btn-success">➕ Add Link</button>
+      </div>
+
+      <!-- Links Display Section -->
+      <div class="links-section">
+        <div class="links-header">
+          <h3>Active Streams <span id="linkCount" class="badge">0</span></h3>
+          <button
+            id="clearAllBtn"
+            class="btn btn-danger btn-small"
+            style="display: none"
+          >
+            🗑️ Clear All
+          </button>
+        </div>
+
+        <div id="linksContainer" class="links-container">
+          <div class="no-links-message">
+            🎬 No active links yet<br />
+            <small>Extract from Telegram or add manually</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
