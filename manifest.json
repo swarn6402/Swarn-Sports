@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Telegram Stream Extractor",
+  "name": "SwarnSports",
+  "short_name": "SwarnSports",
   "version": "1.0.0",
-  "description": "Extract and manage streaming links from Telegram",
-  "permissions": ["activeTab", "storage", "scripting"],
+  "description": "SwarnSports is a lightweight Chrome extension that organizes streaming links from Telegram Web into a clean interface.",
+  "permissions": ["activeTab", "alarms", "storage", "scripting", "tabs"],
   "host_permissions": [
     "https://web.telegram.org/*",
     "https://webz.telegram.org/*"
