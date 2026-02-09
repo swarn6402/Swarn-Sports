@@ -4,7 +4,7 @@ const STORAGE_KEY = "telegram_stream_links";
 const seenLinks = new Set();
 
 /**
- * Check if a URL matches streaming patterns
+ * Validate URL and block obvious junk domains
  */
 function isValidLink(urlString) {
   try {
@@ -21,23 +21,23 @@ function isValidLink(urlString) {
       "youtube.com",
     ];
 
-    return !blockedDomains.some((domain) => hostname.includes(domain));
+    return !blockedDomains.some((domain) =>
+      hostname.includes(domain)
+    );
   } catch (err) {
     return false;
   }
 }
 
 /**
- * Validate and clean URL
+ * Clean and normalize URL
  */
 function cleanUrl(url) {
   if (!url) return null;
 
   try {
-    // Remove common tracking parameters and whitespace
     let cleanedUrl = url.trim();
 
-    // If doesn't start with protocol, add https://
     if (
       !cleanedUrl.startsWith("http://") &&
       !cleanedUrl.startsWith("https://")
@@ -45,7 +45,6 @@ function cleanUrl(url) {
       cleanedUrl = "https://" + cleanedUrl;
     }
 
-    // Validate URL format
     new URL(cleanedUrl);
     return cleanedUrl;
   } catch (e) {
@@ -53,12 +52,17 @@ function cleanUrl(url) {
   }
 }
 
+/**
+ * Save link to chrome storage (with dedupe against storage)
+ */
 function saveToStorage(url) {
   chrome.storage.local.get([STORAGE_KEY], (result) => {
     const links = result[STORAGE_KEY] || [];
+
     if (links.some((link) => link.url === url)) {
       return;
     }
+
     links.push({
       url,
       sport: "Other",
@@ -66,34 +70,45 @@ function saveToStorage(url) {
       timestamp: new Date().toISOString(),
       source: "auto",
     });
+
     chrome.storage.local.set({ [STORAGE_KEY]: links });
   });
 }
 
+/**
+ * Seed already stored links into in-memory Set
+ */
 function seedSeenLinks() {
   chrome.storage.local.get([STORAGE_KEY], (result) => {
     const links = result[STORAGE_KEY] || [];
+
     for (const link of links) {
       if (link.url) {
         seenLinks.add(link.url);
       }
-      seenLinks.add(cleanedUrl);
-      saveToStorage(cleanedUrl, text);
     }
   });
 }
 
+/**
+ * Save link safely with in-memory dedupe
+ */
 function saveLink(url) {
   const cleanedUrl = cleanUrl(url);
-  if (!cleanedUrl || seenLinks.has(cleanedUrl)) {
-    return;
-  }
+
+  if (!cleanedUrl) return;
+  if (seenLinks.has(cleanedUrl)) return;
+
   seenLinks.add(cleanedUrl);
   saveToStorage(cleanedUrl);
 }
 
+/**
+ * Scan entire visible page for URLs
+ */
 function scanEntirePage() {
   const pageText = document.body.innerText;
+
   const urlRegex = /https?:\/\/[^\s]+/g;
   const matches = pageText.match(urlRegex);
 
@@ -106,6 +121,9 @@ function scanEntirePage() {
   });
 }
 
+/**
+ * Auto-monitor DOM changes
+ */
 const observer = new MutationObserver(() => {
   scanEntirePage();
 });
@@ -115,14 +133,17 @@ observer.observe(document.body, {
   subtree: true,
 });
 
+/**
+ * Listen for manual extract button
+ */
 chrome.runtime.onMessage.addListener((request) => {
   if (request.action === "extractLinks") {
     scanEntirePage();
   }
 });
 
-// Seed previously stored links into memory
+/**
+ * Initialize
+ */
 seedSeenLinks();
-
-// Initial scan when content script loads
 scanEntirePage();
