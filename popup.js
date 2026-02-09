@@ -28,6 +28,7 @@ const addSection = document.getElementById("addSection");
 
 // State
 let currentFilter = "";
+let linkActionsBound = false;
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -391,6 +392,7 @@ function displayLinks(links) {
         </div>
       `;
     }
+    bindLinkActions();
     clearAllBtn.style.display = "none";
     return;
   }
@@ -440,9 +442,9 @@ function displayLinks(links) {
           <div class="card-description">${escapeHtml(link.description)}</div>
           <div class="card-url" title="${link.url}">${escapeHtml(urlDisplay)}</div>
           <div class="card-actions">
-            <button class="btn btn-open" onclick="openLink('${escapeHtml(link.url)}')">📺 Open</button>
-            <button class="btn btn-copy" onclick="copyToClipboard('${escapeHtml(link.url)}')">📋 Copy</button>
-            <button class="btn btn-delete" onclick="deleteLink('${escapeHtml(link.url)}')">🗑️</button>
+            <button class="btn btn-open" data-url="${escapeHtml(link.url)}">📺 Open</button>
+            <button class="btn btn-copy" data-url="${escapeHtml(link.url)}">📋 Copy</button>
+            <button class="btn btn-delete" data-url="${escapeHtml(link.url)}">🗑️</button>
           </div>
         </div>
       `;
@@ -450,6 +452,29 @@ function displayLinks(links) {
   }
 
   linksContainer.innerHTML = html;
+  bindLinkActions();
+}
+
+/**
+ * Bind link action event delegation
+ */
+function bindLinkActions() {
+  if (linkActionsBound) return;
+  linksContainer.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const url = btn.dataset.url;
+    if (!url) return;
+
+    if (btn.classList.contains("btn-open")) {
+      openLink(url);
+    } else if (btn.classList.contains("btn-copy")) {
+      copyToClipboard(url);
+    } else if (btn.classList.contains("btn-delete")) {
+      deleteLink(url);
+    }
+  });
+  linkActionsBound = true;
 }
 
 /**
