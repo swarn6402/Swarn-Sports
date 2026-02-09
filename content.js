@@ -209,7 +209,6 @@ chrome.runtime.onMessage.addListener((request) => {
   if (request.action === "extractLinks") {
     scanAllMessages();
   }
-});
 
 seedSeenLinks();
 waitForMessageContainer();
