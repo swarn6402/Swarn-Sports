@@ -119,6 +119,10 @@ chrome.runtime.onMessage.addListener((request) => {
   if (request.action === "extractLinks") {
     scanEntirePage();
   }
+});
 
+// Seed previously stored links into memory
 seedSeenLinks();
+
+// Initial scan when content script loads
 scanEntirePage();
