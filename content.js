@@ -91,34 +91,40 @@ function seedSeenLinks() {
 }
 
 /**
- * Save link safely with in-memory dedupe
+ * Save link safely with in-memory dedupe and return the normalized URL.
  */
 function saveLink(url) {
   const cleanedUrl = cleanUrl(url);
 
-  if (!cleanedUrl) return;
-  if (seenLinks.has(cleanedUrl)) return;
+  if (!cleanedUrl) return null;
+  if (seenLinks.has(cleanedUrl)) return null;
 
   seenLinks.add(cleanedUrl);
   saveToStorage(cleanedUrl);
+  return cleanedUrl;
 }
 
 /**
- * Scan entire visible page for URLs
+ * Scan entire visible page for URLs and return newly saved links.
  */
 function scanEntirePage() {
   const pageText = document.body.innerText;
-
   const urlRegex = /https?:\/\/[^\s]+/g;
   const matches = pageText.match(urlRegex);
+  const newlySavedLinks = [];
 
-  if (!matches) return;
+  if (!matches) return newlySavedLinks;
 
   matches.forEach((url) => {
     if (isValidLink(url)) {
-      saveLink(url);
+      const saved = saveLink(url);
+      if (saved) {
+        newlySavedLinks.push(saved);
+      }
     }
   });
+
+  return newlySavedLinks;
 }
 
 /**
@@ -134,16 +140,39 @@ observer.observe(document.body, {
 });
 
 /**
- * Listen for manual extract button
+ * Listen for messages from popup.js and respond with results.
  */
-chrome.runtime.onMessage.addListener((request) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("[content] Message received:", request);
+
   if (request.action === "extractLinks") {
-    scanEntirePage();
+    const newLinks = scanEntirePage();
+    console.log("[content] Extracted links:", newLinks);
+    sendResponse({
+      success: true,
+      links: newLinks,
+      total: seenLinks.size,
+      receivedPayload: request.payload || null,
+    });
+    return true;
   }
+
+  if (request.action === "ping") {
+    sendResponse({
+      success: true,
+      pong: true,
+      echo: request.payload || null,
+    });
+    return true;
+  }
+
+  sendResponse({ success: false, message: "Unknown action" });
+  return true;
 });
 
 /**
  * Initialize
  */
+console.log("[content] Content script initialized on:", window.location.href);
 seedSeenLinks();
 scanEntirePage();

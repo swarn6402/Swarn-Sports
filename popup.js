@@ -48,12 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
  * Setup all event listeners
  */
 function setupEventListeners() {
-  extractBtn.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs || !tabs[0]) return;
-      chrome.tabs.sendMessage(tabs[0].id, { action: "extractLinks" });
-    });
-  });
+  // Use the async handler to ensure messages are sent with proper error handling.
+  extractBtn.addEventListener("click", handleExtractLinks);
   refreshBtn.addEventListener("click", handleRefreshPage);
   addBtn.addEventListener("click", handleAddLink);
   clearAllBtn.addEventListener("click", handleClearAll);
@@ -80,6 +76,36 @@ async function getTelegramTab() {
 }
 
 /**
+ * Send a message to a tab using a Promise wrapper with clear errors.
+ */
+function sendMessageToTab(tabId, message) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabId, message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
+/**
+ * Get the current active tab using a Promise wrapper.
+ */
+function getActiveTab() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(tabs && tabs[0] ? tabs[0] : null);
+    });
+  });
+}
+
+/**
  * Handle extract links button
  */
 async function handleExtractLinks() {
@@ -95,18 +121,20 @@ async function handleExtractLinks() {
       return;
     }
 
-    // Send message to content script to extract links
-    const response = await chrome.tabs.sendMessage(telegramTab.id, {
+    console.log("[popup] Sending extractLinks message to content script.");
+    // Send message to content script to extract links (includes example payload).
+    const response = await sendMessageToTab(telegramTab.id, {
       action: "extractLinks",
+      payload: { source: "popup", requestedAt: new Date().toISOString() },
     });
 
-    if (!response.success) {
+    if (!response || !response.success) {
       showStatus("❌ Failed to extract links. Try again.", "error");
       extractBtn.disabled = false;
       return;
     }
 
-    const extractedLinks = response.links;
+    const extractedLinks = response.links || [];
 
     if (extractedLinks.length === 0) {
       showStatus(
@@ -145,11 +173,22 @@ async function handleExtractLinks() {
     const allLinks = Array.from(urlMap.values());
     await saveLinks(allLinks);
 
-    showStatus(`✅ Extracted ${extractedLinks.length} link(s)!`, "success");
+    showStatus(
+      `✅ Extracted ${extractedLinks.length} link(s)!`,
+      "success",
+    );
     loadAndDisplayLinks();
   } catch (error) {
     console.error("Error extracting links:", error);
-    showStatus("❌ Error: " + error.message, "error");
+    // If no receiver exists, notify the user with a friendly fallback.
+    if (error.message.includes("Receiving end does not exist")) {
+      showStatus(
+        "⚠️ Content script is not available on this page. Open a supported page and try again.",
+        "error",
+      );
+    } else {
+      showStatus("❌ Error: " + error.message, "error");
+    }
   } finally {
     extractBtn.disabled = false;
   }
@@ -596,3 +635,26 @@ async function updateBadge() {
 
 // Periodically update badge
 setInterval(updateBadge, 60000); // Update every minute
+
+/**
+ * Example helper: ping the active tab content script and log the response.
+ * This demonstrates sending data and receiving a response using Promises.
+ */
+async function pingActiveTab() {
+  try {
+    const activeTab = await getActiveTab();
+    if (!activeTab) {
+      console.warn("[popup] No active tab to ping.");
+      return;
+    }
+
+    console.log("[popup] Sending ping message with data payload.");
+    const response = await sendMessageToTab(activeTab.id, {
+      action: "ping",
+      payload: { message: "Hello from popup.js!" },
+    });
+    console.log("[popup] Ping response received:", response);
+  } catch (error) {
+    console.warn("[popup] Ping failed:", error.message);
+  }
+}
