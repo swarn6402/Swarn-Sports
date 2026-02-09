@@ -35,8 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadAndDisplayLinks();
   setupEventListeners();
   updateBadge();
-  extractBtn.disabled = true;
-  extractBtn.title = "Automatic extraction enabled";
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && changes[STORAGE_KEY]) {
@@ -50,6 +48,12 @@ document.addEventListener("DOMContentLoaded", () => {
  * Setup all event listeners
  */
 function setupEventListeners() {
+  extractBtn.addEventListener("click", () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0]) return;
+      chrome.tabs.sendMessage(tabs[0].id, { action: "extractLinks" });
+    });
+  });
   refreshBtn.addEventListener("click", handleRefreshPage);
   addBtn.addEventListener("click", handleAddLink);
   clearAllBtn.addEventListener("click", handleClearAll);

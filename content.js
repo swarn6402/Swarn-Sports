@@ -6,12 +6,10 @@ const seenLinks = new Set();
 /**
  * Check if a URL matches streaming patterns
  */
-function isStreamingLink(urlString) {
+function isValidLink(urlString) {
   try {
     const url = new URL(urlString);
     const hostname = url.hostname.toLowerCase();
-    const path = url.pathname.toLowerCase();
-    const full = urlString.toLowerCase();
 
     const blockedDomains = [
       "t.me",
@@ -26,36 +24,7 @@ function isStreamingLink(urlString) {
     if (blockedDomains.some((domain) => hostname.includes(domain))) {
       return false;
     }
-
-    const streamExtensions = [".m3u8", ".mpd", ".mp4", ".mkv", ".ts"];
-
-    if (streamExtensions.some((ext) => path.endsWith(ext))) {
-      return true;
-    }
-
-    const streamKeywords = [
-      "stream",
-      "live",
-      "watch",
-      "embed",
-      "play",
-      "video",
-      "hls",
-      "dash",
-    ];
-
-    const videoIndicators = ["1080", "720", "480", "hd", "4k", "fhd"];
-
-    const hasKeyword = streamKeywords.some((keyword) => full.includes(keyword));
-    const hasIndicator = videoIndicators.some((indicator) =>
-      full.includes(indicator),
-    );
-
-    if (hasKeyword && hasIndicator) {
-      return true;
-    }
-
-    return false;
+    return true;
   } catch (err) {
     return false;
   }
@@ -139,7 +108,7 @@ function extractLinksFromText(text) {
       if (!cleanedUrl || seenLinks.has(cleanedUrl)) {
         continue;
       }
-      if (!isStreamingLink(cleanedUrl)) {
+      if (!isValidLink(cleanedUrl)) {
         continue;
       }
       seenLinks.add(cleanedUrl);
@@ -224,6 +193,22 @@ function waitForMessageContainer() {
 
   setTimeout(waitForMessageContainer, 2000);
 }
+
+function scanAllMessages() {
+  const messageElements = document.querySelectorAll(
+    '[class*="message"], [class*="bubble"], [class*="MessageGroup"], [class*="message-content"], [role="article"], .message',
+  );
+  messageElements.forEach((element) => {
+    if (element && element.innerText) {
+      extractLinksFromText(element.innerText);
+    }
+  });
+}
+
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.action === "extractLinks") {
+    scanAllMessages();
+  }
 
 seedSeenLinks();
 waitForMessageContainer();
